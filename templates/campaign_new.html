@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}New campaign · Mail Pulse{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>New campaign</h1>
+    <p>Cap is {{ max_recipients }} recipients. Use <code>{{ '{{name}}' }}</code> or <code>{{ '{{email}}' }}</code> in the body to personalize.</p>
+  </div>
+</header>
+
+<form method="post" enctype="multipart/form-data" class="card form">
+  <label>Campaign name
+    <input type="text" name="name" required placeholder="August product update" />
+  </label>
+  <label>Subject
+    <input type="text" name="subject" required placeholder="A short, honest subject line" />
+  </label>
+  <label>HTML body
+    <textarea name="html_body" rows="12" required placeholder="<p>Hi {{ '{{name}}' }},</p><p>Here is the update: <a href='https://example.com'>Read more</a></p>"></textarea>
+  </label>
+  <label>Recipients (one per line: email or email, Name)
+    <textarea name="recipients" rows="8" placeholder="alex@example.com, Alex&#10;sam@example.com"></textarea>
+  </label>
+  <label>Or upload CSV (email, name)
+    <input type="file" name="csv_file" accept=".csv,text/csv" />
+  </label>
+  <button type="submit">Save campaign</button>
+</form>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Mail Pulse{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Campaigns</h1>
+    <p>One place to see what left the server, what was opened, and who opted out.</p>
+  </div>
+  <a class="btn" href="{{ url_for('campaign_new') }}">New campaign</a>
+</header>
+
+{% if not smtp_ok %}
+  <div class="flash error">SMTP is not set up yet. Add your mail server in <a href="{{ url_for('settings_page') }}">Settings</a> before sending.</div>
+{% endif %}
+
+<div class="stats">
+  <article><span>Campaigns</span><strong>{{ totals.campaigns }}</strong></article>
+  <article><span>Sent</span><strong>{{ totals.sent }}</strong></article>
+  <article><span>Opened</span><strong>{{ totals.opened }}</strong></article>
+  <article><span>Clicked</span><strong>{{ totals.clicked }}</strong></article>
+  <article><span>Unsubscribed</span><strong>{{ totals.unsubscribed }}</strong></article>
+</div>
+
+{% if campaigns %}
+<table class="table">
+  <thead>
+    <tr>
+      <th>Campaign</th>
+      <th>Status</th>
+      <th>Sent</th>
+      <th>Opened</th>
+      <th>Clicked</th>
+      <th>Unsubscribed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in campaigns %}
+    <tr>
+      <td>
+        <a href="{{ url_for('campaign_detail', campaign_id=c.id) }}">{{ c.name }}</a>
+        <div class="muted">{{ c.subject }}</div>
+      </td>
+      <td><span class="pill {{ c.status }}">{{ c.status }}</span></td>
+      <td>{{ c.sent_count }} / {{ c.total }}</td>
+      <td>{{ c.opened_count }}</td>
+      <td>{{ c.clicked_count }}</td>
+      <td>{{ c.unsubscribed_count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="empty">No campaigns yet. Create one and paste up to 200 addresses.</p>
+{% endif %}
+{% endblock %}

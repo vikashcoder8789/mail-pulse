@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Mail Pulse{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="shell">
+    {% if current_user %}
+    <aside class="side">
+      <a class="brand" href="{{ url_for('dashboard') }}">Mail Pulse</a>
+      <p class="tag">Send 200. Track every open, click, and unsubscribe.</p>
+      <p class="tag">{{ current_user.email }}</p>
+      <nav>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('campaign_new') }}">New campaign</a>
+        <a href="{{ url_for('settings_page') }}">Settings</a>
+        <a href="{{ url_for('logout') }}">Log out</a>
+      </nav>
+    </aside>
+    {% endif %}
+    <main class="main">
+      {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

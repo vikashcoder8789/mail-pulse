@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Mail Pulse{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>Mail Pulse</h1>
+  <p class="lede">Sign in with your account. Each person has a private dashboard and their own SMTP settings.</p>
+  <form method="post" class="card form">
+    <label>Email
+      <input type="email" name="email" autofocus required />
+    </label>
+    <label>Password
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Sign in</button>
+  </form>
+  <p class="lede">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+</section>
+{% endblock %}

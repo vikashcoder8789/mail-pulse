@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} · Mail Pulse{% endblock %}
+{% block extra_head %}
+  {% if campaign.status == 'sending' %}
+  <meta http-equiv="refresh" content="3" />
+  {% endif %}
+{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>{{ campaign.name }}</h1>
+    <p>{{ campaign.subject }}</p>
+  </div>
+  {% if campaign.status != 'sending' %}
+  <form method="post" action="{{ url_for('campaign_send', campaign_id=campaign.id) }}">
+    <button type="submit" class="btn" {% if not smtp_ok %}disabled{% endif %}>Send now</button>
+  </form>
+  {% endif %}
+</header>
+
+<div class="stats">
+  <article><span>Queued</span><strong>{{ campaign.total }}</strong></article>
+  <article><span>Sent</span><strong>{{ campaign.sent_count }}</strong></article>
+  <article><span>Opened</span><strong>{{ campaign.opened_count }}</strong></article>
+  <article><span>Clicked a link</span><strong>{{ campaign.clicked_count }}</strong></article>
+  <article><span>Unsubscribed</span><strong>{{ campaign.unsubscribed_count }}</strong></article>
+</div>
+
+<p class="muted">Status: <span class="pill {{ campaign.status }}">{{ campaign.status }}</span>
+  {% if campaign.error_message %} — {{ campaign.error_message }}{% endif %}
+  {% if campaign.status == 'sending' %} — refresh to update counts.{% endif %}
+</p>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Name</th>
+      <th>Status</th>
+      <th>Opened</th>
+      <th>Clicked</th>
+      <th>Unsubscribed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in campaign.recipients %}
+    <tr>
+      <td>{{ r.email }}</td>
+      <td>{{ r.name }}</td>
+      <td>
+        <span class="pill {{ r.status }}">{{ r.status }}</span>
+        {% if r.error_message %}<div class="muted">{{ r.error_message }}</div>{% endif %}
+      </td>
+      <td>{% if r.opened_at %}yes ({{ r.open_count }}){% else %}—{% endif %}</td>
+      <td>{% if r.clicked_at %}yes ({{ r.click_count }}){% else %}—{% endif %}</td>
+      <td>{% if r.unsubscribed_at %}yes{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

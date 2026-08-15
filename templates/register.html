@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Create account · Mail Pulse{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>Create account</h1>
+  <p class="lede">Use this only to email people who asked for your mail. You will add your own SMTP login in Settings.</p>
+  <form method="post" class="card form">
+    <label>Email
+      <input type="email" name="email" autofocus required />
+    </label>
+    <label>Password (at least 8 characters)
+      <input type="password" name="password" required minlength="8" />
+    </label>
+    <label>Confirm password
+      <input type="password" name="confirm" required minlength="8" />
+    </label>
+    <button type="submit">Create account</button>
+  </form>
+  <p class="lede">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+</section>
+{% endblock %}

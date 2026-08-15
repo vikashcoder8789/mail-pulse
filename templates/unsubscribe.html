@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Unsubscribe · Mail Pulse{% endblock %}
+{% block content %}
+<section class="auth">
+  {% if missing %}
+    <h1>Link not valid</h1>
+    <p class="lede">This unsubscribe link is missing or expired.</p>
+  {% elif done %}
+    <h1>You are unsubscribed</h1>
+    <p class="lede">You will not get further campaigns from this list.</p>
+  {% else %}
+    <h1>Unsubscribe</h1>
+    <p class="lede">Stop mail to {{ email }}.</p>
+    <form method="post" class="card form">
+      <button type="submit">Confirm unsubscribe</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
