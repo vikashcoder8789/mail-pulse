@@ -13,13 +13,20 @@
   </div>
   {% if campaign.status != 'sending' %}
   <form method="post" action="{{ url_for('campaign_send', campaign_id=campaign.id) }}">
-    <button type="submit" class="btn" {% if not smtp_ok %}disabled{% endif %}>Send now</button>
+    <button type="submit" class="btn">Send now</button>
   </form>
   {% endif %}
 </header>
 
+{% if not smtp_ok %}
+  <div class="flash error">SMTP is not set up, so mail cannot go out. Add host, username, password, and from address in <a href="{{ url_for('settings_page') }}">Settings</a>, then click Send now.</div>
+{% endif %}
+{% if campaign.status == 'draft' %}
+  <div class="flash error">These addresses are only saved. They are not emailed until you click <strong>Send now</strong>.</div>
+{% endif %}
+
 <div class="stats">
-  <article><span>Queued</span><strong>{{ campaign.total }}</strong></article>
+  <article><span>Recipients</span><strong>{{ campaign.total }}</strong></article>
   <article><span>Sent</span><strong>{{ campaign.sent_count }}</strong></article>
   <article><span>Opened</span><strong>{{ campaign.opened_count }}</strong></article>
   <article><span>Clicked a link</span><strong>{{ campaign.clicked_count }}</strong></article>

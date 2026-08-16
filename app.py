@@ -3,7 +3,7 @@ import io
 import os
 import re
 import sqlite3
-import threading
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -35,6 +35,7 @@ PIXEL_GIF = (
 )
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+SEND_POOL = ThreadPoolExecutor(max_workers=1)
 
 
 def data_dir():
@@ -75,6 +76,9 @@ def create_app():
     retire_legacy_db(Path("instance") / "mailpulse.db")
     app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_uri(db_file)
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "connect_args": {"check_same_thread": False}
+    }
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     if space_public_url():
         app.config["SESSION_COOKIE_SECURE"] = True
@@ -282,11 +286,17 @@ def create_app():
         if not smtp_ready(get_settings(g.user.id)):
             flash("Configure SMTP in Settings before sending.", "error")
             return redirect(url_for("settings_page"))
-        thread = threading.Thread(
-            target=send_campaign, args=(app, campaign.id), daemon=True
-        )
-        thread.start()
-        flash("Sending started. Refresh this page to watch progress.", "ok")
+        campaign.status = "sending"
+        campaign.started_at = utcnow()
+        campaign.error_message = ""
+        db.session.commit()
+        # Small lists send in this request so Render does not drop a background thread.
+        if campaign.total <= 15:
+            send_campaign(app, campaign.id)
+            flash("Finished sending. Check each row for sent or failed.", "ok")
+        else:
+            SEND_POOL.submit(send_campaign, app, campaign.id)
+            flash("Sending started. This page will refresh while it runs.", "ok")
         return redirect(url_for("campaign_detail", campaign_id=campaign.id))
 
     @app.route("/t/open/<token>.gif")

@@ -1,5 +1,6 @@
 import os
 import smtplib
+import ssl
 import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -9,7 +10,7 @@ from urllib.parse import quote, urlparse
 
 from bs4 import BeautifulSoup
 
-from models import Campaign, Setting, Unsubscribed, db, utcnow
+from models import Campaign, Recipient, Setting, Unsubscribed, db, utcnow
 
 MAX_RECIPIENTS = 200
 SEND_DELAY_SECONDS = 0.15
@@ -108,9 +109,17 @@ def send_one(settings, campaign, recipient):
     msg.attach(MIMEText(text, "plain", "utf-8"))
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    with smtplib.SMTP(settings.smtp_host, int(settings.smtp_port), timeout=30) as smtp:
+    port = int(settings.smtp_port)
+    if port == 465:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(settings.smtp_host, port, timeout=30, context=context) as smtp:
+            if settings.smtp_user:
+                smtp.login(settings.smtp_user, settings.smtp_password)
+            smtp.sendmail(settings.from_email, [recipient.email], msg.as_string())
+        return
+    with smtplib.SMTP(settings.smtp_host, port, timeout=30) as smtp:
         if settings.smtp_use_tls:
-            smtp.starttls()
+            smtp.starttls(context=ssl.create_default_context())
         if settings.smtp_user:
             smtp.login(settings.smtp_user, settings.smtp_password)
         smtp.sendmail(settings.from_email, [recipient.email], msg.as_string())
@@ -131,39 +140,52 @@ def send_campaign(app, campaign_id):
         campaign = db.session.get(Campaign, campaign_id)
         if campaign is None:
             return
-        settings = get_settings(campaign.user_id)
-        if not smtp_ready(settings):
-            campaign.status = "failed"
-            campaign.error_message = "SMTP is not configured. Add host, login, and from address in Settings."
+        try:
+            settings = get_settings(campaign.user_id)
+            if not smtp_ready(settings):
+                campaign.status = "failed"
+                campaign.error_message = "SMTP is not configured. Add host, login, and from address in Settings."
+                campaign.finished_at = utcnow()
+                db.session.commit()
+                return
+
+            campaign.status = "sending"
+            campaign.started_at = campaign.started_at or utcnow()
+            campaign.error_message = ""
+            db.session.commit()
+
+            recipients = list(
+                Recipient.query.filter_by(campaign_id=campaign.id).order_by(Recipient.id).all()
+            )
+            for recipient in recipients:
+                if recipient.status == "sent":
+                    continue
+                already = Unsubscribed.query.filter_by(
+                    user_id=campaign.user_id, email=recipient.email.lower()
+                ).first()
+                if already:
+                    recipient.status = "skipped"
+                    recipient.error_message = "Already unsubscribed"
+                    db.session.commit()
+                    continue
+                try:
+                    send_one(settings, campaign, recipient)
+                    recipient.status = "sent"
+                    recipient.sent_at = utcnow()
+                    recipient.error_message = ""
+                except Exception as exc:
+                    recipient.status = "failed"
+                    recipient.error_message = str(exc)
+                db.session.commit()
+                time.sleep(SEND_DELAY_SECONDS)
+
+            campaign.status = "sent"
             campaign.finished_at = utcnow()
             db.session.commit()
-            return
-
-        campaign.status = "sending"
-        campaign.started_at = utcnow()
-        campaign.error_message = ""
-        db.session.commit()
-
-        for recipient in campaign.recipients:
-            already = Unsubscribed.query.filter_by(
-                user_id=campaign.user_id, email=recipient.email.lower()
-            ).first()
-            if already:
-                recipient.status = "skipped"
-                recipient.error_message = "Already unsubscribed"
+        except Exception as exc:
+            campaign = db.session.get(Campaign, campaign_id)
+            if campaign is not None:
+                campaign.status = "failed"
+                campaign.error_message = str(exc)
+                campaign.finished_at = utcnow()
                 db.session.commit()
-                continue
-            try:
-                send_one(settings, campaign, recipient)
-                recipient.status = "sent"
-                recipient.sent_at = utcnow()
-                recipient.error_message = ""
-            except Exception as exc:
-                recipient.status = "failed"
-                recipient.error_message = str(exc)
-            db.session.commit()
-            time.sleep(SEND_DELAY_SECONDS)
-
-        campaign.status = "sent"
-        campaign.finished_at = utcnow()
-        db.session.commit()
